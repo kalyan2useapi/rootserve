@@ -2,7 +2,7 @@
 document.documentElement.classList.remove('no-js');
 
 // Paste the Zoho Forms embed URL here (Zoho Forms > Share > Embed > iFrame src)
-const ZOHO_FORM_URL = '';
+const ZOHO_FORM_URL = 'https://forms.zohopublic.com/inforoot1/form/AIAssessmentRequest/formperma/-l-w70ebrpPCryWKDNfDS8wR5BVh7L_U2-c3z9M09QA';
 
 (function () {
   // mobile menu
