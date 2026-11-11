@@ -97,16 +97,32 @@ const ZOHO_FORM_URL = 'https://forms.zohopublic.com/inforoot1/form/AIAssessmentR
 })();
 
 /* Water ring video: start downloading only after the page has loaded (hero) or when it nears the screen (closing section).
-   The poster image shows until then. AV1 first, VP9 and MP4 as fallbacks. */
+   The poster image shows until then. AV1 first, VP9 and MP4 as fallbacks; Safari always gets the MP4. */
 (function () {
   const vids = [...document.querySelectorAll('video[data-lazy]')];
   if (!vids.length) return;
   const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  // Safari (iPhone, iPad and Mac) gets the H.264 MP4 only: it can report WebM/AV1 support it then fails to play.
+  const ua = navigator.userAgent;
+  const isSafari = /iP(hone|ad|od)/.test(ua) || (/Safari\//.test(ua) && !/Chrome|Chromium|CriOS|FxiOS|Edg|Android/.test(ua));
+  const tryPlay = v => { if (reduce) return; const p = v.play(); if (p && p.catch) p.catch(() => {
+    // blocked (for example iPhone Low Power Mode): try again on the first tap or scroll
+    const again = () => { v.play().catch(() => {}); };
+    ['touchstart', 'click', 'scroll'].forEach(e => window.addEventListener(e, again, { once: true, passive: true }));
+  }); };
   const start = v => {
     if (v.dataset.started) return; v.dataset.started = '1';
-    v.querySelectorAll('source[data-src]').forEach(s => { s.src = s.dataset.src; });
+    v.muted = true; v.defaultMuted = true; v.playsInline = true; v.loop = true;
+    v.setAttribute('muted', ''); v.setAttribute('playsinline', ''); v.setAttribute('webkit-playsinline', '');
+    v.querySelectorAll('source[data-src]').forEach(s => {
+      if (isSafari && !/mp4/.test(s.type)) { s.remove(); return; }
+      s.src = s.dataset.src;
+    });
+    if (!reduce) v.autoplay = true;
+    v.preload = 'auto';
+    v.addEventListener('canplay', () => tryPlay(v), { once: true });
     v.load();
-    if (!reduce) { const p = v.play(); if (p && p.catch) p.catch(() => {}); }
+    tryPlay(v);
   };
   const idle = cb => ('requestIdleCallback' in window) ? requestIdleCallback(cb, { timeout: 1500 }) : setTimeout(cb, 200);
   const whenLoaded = cb => document.readyState === 'complete' ? idle(cb) : window.addEventListener('load', () => idle(cb), { once: true });
