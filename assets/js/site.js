@@ -83,7 +83,7 @@ const ZOHO_FORM_URL = 'https://forms.zohopublic.com/inforoot1/form/AIAssessmentR
   // carousel buttons
   const track = document.querySelector('.cards');
   document.querySelectorAll('[data-scroll]').forEach(b => b.addEventListener('click', () => {
-    if (track) track.scrollBy({ left: (b.dataset.scroll === 'next' ? 1 : -1) * 424, behavior: 'smooth' });
+    if (track) track.scrollBy({ left: (b.dataset.scroll === 'next' ? 1 : -1) * ((track.firstElementChild?.offsetWidth || 400) + 24), behavior: 'smooth' });
   }));
 
   // Zoho form embed
