@@ -119,7 +119,7 @@ const kind=m=>m[4]==='w'?'w':(ents[idx[m[1]]].h||ents[idx[m[2]]].h)?'h':m[4]==='
 const COL={'':'#5CCFE6',h:'#F2B15A',w:'#F08A78',t:'#9BE3F2'};
 function addMsg(m){const ty=kind(m);[...log.children].forEach(c=>c.classList.add('old'));while(log.children.length>1)log.firstChild.remove();
  const d=document.createElement('div');d.className='msg '+ty;d.innerHTML=`<em>${ents[idx[m[1]]].n} → ${ents[idx[m[2]]].n}</em>${m[3]}`;log.appendChild(d)}
-function ending(){el.querySelector('.core').classList.add('done');const e=CASES[cur].end;log.innerHTML=`<div class="end msg"><div class="n">${e[0]}</div><div class="s">${e[1]}</div><div class="stats">${e[2].map(x=>'<b>'+x+'</b>').join('')}</div></div>`}
+function ending(){root.dispatchEvent(new CustomEvent('agentend'));el.querySelector('.core').classList.add('done');const e=CASES[cur].end;log.innerHTML=`<div class="end msg"><div class="n">${e[0]}</div><div class="s">${e[1]}</div><div class="stats">${e[2].map(x=>'<b>'+x+'</b>').join('')}</div></div>`}
 
 load(0);
 if(RM){place(0);ending();return}
@@ -135,7 +135,7 @@ function frame(now){if(!running)return;if(t0===null)t0=now;const t=now-t0;place(
   const p=qp(a,b,ke,o.bend);o.dot.setAttribute('cx',p[0]);o.dot.setAttribute('cy',p[1]);
   const k0=Math.max(0,ke-.3);let d='';for(let s=0;s<=8;s++){const q=qp(a,b,k0+(ke-k0)*s/8,o.bend);d+=(s?'L':'M')+q[0].toFixed(1)+','+q[1].toFixed(1)}o.path.setAttribute('d',d);
   const to=ents[idx[o.m[2]]].el,from=ents[idx[o.m[1]]].el;
-  if(k>=1&&!o.arrived){o.arrived=true;o.arr=t;from.classList.remove('act');to.classList.add('act');if(o.ty==='w')to.classList.add('warn');addMsg(o.m);o.dot.setAttribute('r','0')}
+  if(k>=1&&!o.arrived){o.arrived=true;o.arr=t;from.classList.remove('act');to.classList.add('act');if(o.ty==='w')to.classList.add('warn');addMsg(o.m);o.dot.setAttribute('r','0');const q=pos[idx[o.m[2]]];root.dispatchEvent(new CustomEvent('agentmsg',{detail:{x:q[0],y:q[1],type:o.ty}}))}
   if(o.arrived){const f=Math.max(0,1-(t-o.arr)/550);o.path.style.opacity=f;if(f===0){to.classList.remove('act','warn');o.g.remove();return false}}
   return true});
  const bar=tabs.children[cur].querySelector('.p');bar.style.width=Math.min(100,t/(endAt+HOLD)*100)+'%';
