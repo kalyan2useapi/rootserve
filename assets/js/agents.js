@@ -119,7 +119,7 @@ const kind=m=>m[4]==='w'?'w':(ents[idx[m[1]]].h||ents[idx[m[2]]].h)?'h':m[4]==='
 const COL={'':'#5CCFE6',h:'#F2B15A',w:'#F08A78',t:'#9BE3F2'};
 function addMsg(m){const ty=kind(m);[...log.children].forEach(c=>c.classList.add('old'));while(log.children.length>1)log.firstChild.remove();
  const d=document.createElement('div');d.className='msg '+ty;d.innerHTML=`<em>${ents[idx[m[1]]].n} → ${ents[idx[m[2]]].n}</em>${m[3]}`;log.appendChild(d)}
-function ending(){root.dispatchEvent(new CustomEvent('agentend'));el.querySelector('.core').classList.add('done');const e=CASES[cur].end;log.innerHTML=`<div class="end msg"><div class="n">${e[0]}</div><div class="s">${e[1]}</div><div class="stats">${e[2].map(x=>'<b>'+x+'</b>').join('')}</div></div>`}
+function ending(){root.dispatchEvent(new CustomEvent('agentend'));el.querySelector('.core').classList.add('done');const e=CASES[cur].end;log.innerHTML=`<div class="end msg"><div class="n">${e[0]}</div><div class="s">${e[1]}</div><div class="ag-stats">${e[2].map(x=>'<b>'+x+'</b>').join('')}</div></div>`}
 
 load(0);
 if(RM){place(0);ending();return}
