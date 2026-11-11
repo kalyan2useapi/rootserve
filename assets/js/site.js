@@ -97,10 +97,9 @@ const ZOHO_FORM_URL = 'https://forms.zohopublic.com/inforoot1/form/AIAssessmentR
 })();
 
 /* Water ring video: start downloading only after the page has loaded (hero) or when it nears the screen (closing section).
-   The poster image shows until then. AV1 first, VP9 and MP4 as fallbacks; Safari always gets the MP4. */
+   The poster image shows until then. */
 (function () {
   const vids = [...document.querySelectorAll('video[data-lazy]')];
-  if (!vids.length) return;
   const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
   // Safari (iPhone, iPad and Mac) gets the H.264 MP4 only: it can report WebM/AV1 support it then fails to play.
   const ua = navigator.userAgent;
@@ -108,7 +107,7 @@ const ZOHO_FORM_URL = 'https://forms.zohopublic.com/inforoot1/form/AIAssessmentR
   const tryPlay = v => { if (reduce) return; const p = v.play(); if (p && p.catch) p.catch(() => {
     // blocked (for example iPhone Low Power Mode): try again on the first tap or scroll
     const again = () => { v.play().catch(() => {}); };
-    ['touchstart', 'click', 'scroll'].forEach(e => window.addEventListener(e, again, { once: true, passive: true }));
+    ['touchend', 'click'].forEach(e => window.addEventListener(e, again, { once: true, passive: true }));
   }); };
   const start = v => {
     if (v.dataset.started) return; v.dataset.started = '1';
@@ -126,10 +125,33 @@ const ZOHO_FORM_URL = 'https://forms.zohopublic.com/inforoot1/form/AIAssessmentR
   };
   const idle = cb => ('requestIdleCallback' in window) ? requestIdleCallback(cb, { timeout: 1500 }) : setTimeout(cb, 200);
   const whenLoaded = cb => document.readyState === 'complete' ? idle(cb) : window.addEventListener('load', () => idle(cb), { once: true });
+  document.querySelectorAll('.hero-visual video').forEach(v => { v.muted = true; v.addEventListener('canplay', () => { if (v.paused) tryPlay(v); }, { once: true }); if (v.readyState >= 3 && v.paused) tryPlay(v); });
   vids.filter(v => v.dataset.lazy === 'load').forEach(v => whenLoaded(() => start(v)));
   const later = vids.filter(v => v.dataset.lazy === 'view');
   if ('IntersectionObserver' in window) {
     const io = new IntersectionObserver(es => es.forEach(e => { if (e.isIntersecting) { start(e.target); io.unobserve(e.target); } }), { rootMargin: '400px 0px' });
     whenLoaded(() => later.forEach(v => io.observe(v)));
   } else whenLoaded(() => later.forEach(start));
+})();
+
+/* Diagnostics: open the site with ?debug=1 to see what the water ring video is doing on this device. */
+(function () {
+  if (!/[?&]debug=1/.test(location.search)) return;
+  const box = document.createElement('pre');
+  box.style.cssText = 'position:fixed;left:8px;right:8px;bottom:8px;z-index:9999;margin:0;padding:10px;background:rgba(0,0,0,.85);color:#9BE3F2;font:11px/1.45 ui-monospace,monospace;border:1px solid #5CCFE6;border-radius:8px;white-space:pre-wrap';
+  document.body.appendChild(box);
+  const v = document.querySelector('.hero-visual video');
+  const ev = [];
+  ['loadstart','loadedmetadata','canplay','playing','pause','waiting','stalled','suspend','error'].forEach(e => v && v.addEventListener(e, () => { ev.push(e); if (ev.length > 8) ev.shift(); }));
+  const lp = v ? v.play() : null; let playErr = '';
+  if (lp && lp.catch) lp.catch(e => { playErr = e.name + ': ' + e.message; });
+  setInterval(() => {
+    if (!v) { box.textContent = 'no hero video found'; return; }
+    box.textContent = ['UA: ' + navigator.userAgent,
+      'src: ' + (v.currentSrc || '(none)').split('/').pop() + '  time: ' + v.currentTime.toFixed(2) + '  paused: ' + v.paused,
+      'readyState: ' + v.readyState + '  network: ' + v.networkState + '  error: ' + (v.error ? v.error.code : 'none'),
+      'muted: ' + v.muted + '  reducedMotion: ' + matchMedia('(prefers-reduced-motion: reduce)').matches,
+      'canPlay mp4: ' + v.canPlayType('video/mp4') + '  play(): ' + (playErr || 'ok'),
+      'events: ' + ev.join(', ')].join('\n');
+  }, 500);
 })();
