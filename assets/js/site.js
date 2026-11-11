@@ -155,6 +155,6 @@ const ZOHO_FORM_URL = 'https://forms.zohopublic.com/inforoot1/form/AIAssessmentR
       'muted: ' + v.muted + '  reducedMotion: ' + matchMedia('(prefers-reduced-motion: reduce)').matches,
       'canPlay mp4: ' + v.canPlayType('video/mp4') + '  play(): ' + (playErr || 'ok'),
       'events: ' + ev.join(', '),
-      'light hits: ' + (window.RootserveHits ? window.RootserveHits.mode + ', ' + window.RootserveHits.hits + ' so far' : 'not running')].join('\n');
+      'light hits: ' + (window.RootserveHits ? window.RootserveHits.mode + ', ' + window.RootserveHits.hits + ' so far, peak light ' + (window.RootserveHits.lit || 0) + '/255' : 'not running')].join('\n');
   }, 500);
 })();

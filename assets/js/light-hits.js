@@ -155,9 +155,17 @@
         }
       }
     }
+    // for ?debug=1: how much light actually ended up on the canvas
+    var dbg = /[?&]debug=1/.test(location.search), lastLit = 0;
+    function measure(now) {
+      if (!dbg || now - lastLit < 300) return; lastLit = now;
+      try { pr.clearRect(0, 0, 16, 16); pr.drawImage(cv, 0, 0, 16, 16);
+        var d = pr.getImageData(0, 0, 16, 16).data, m = 0; for (var i = 3; i < d.length; i += 4) m = Math.max(m, d[i]);
+        api.lit = Math.max(api.lit || 0, m); } catch (e) { api.lit = 'unreadable'; }
+    }
     function loop(now) {
       var dt = last ? Math.min(0.05, (now - last) / 1000) : 0.016; last = now;
-      draw(dt);
+      draw(dt); measure(now);
       if (fx.length) raf = requestAnimationFrame(loop);
       else { raf = 0; last = 0; ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.clearRect(0, 0, W, H); }
     }
