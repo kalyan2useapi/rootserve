@@ -1,0 +1,36 @@
+# Hourly health check for www.rootserve.us.
+# If any check fails, the run fails and GitHub emails the repo owner.
+name: Site health check
+on:
+  schedule:
+    - cron: "17 * * * *"
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Check pages, video and contact form
+        shell: bash
+        run: |
+          set -u
+          fail=0
+          check() { # url, expected text (optional)
+            local url="$1" want="${2:-}" body code
+            body=$(curl -sS -L --max-time 20 -A "rootserve-health-check" -w '\n%{http_code}' "$url") || { echo "::error::$url unreachable"; fail=1; return; }
+            code="${body##*$'\n'}"; body="${body%$'\n'*}"
+            if [ "$code" != "200" ]; then echo "::error::$url returned $code"; fail=1; return; fi
+            if [ -n "$want" ] && ! grep -q "$want" <<<"$body"; then echo "::error::$url is missing \"$want\""; fail=1; return; fi
+            echo "OK  $url"
+          }
+          check https://www.rootserve.us/ 'class="agents"'
+          check https://www.rootserve.us/contact.html 'zoho-form'
+          check https://www.rootserve.us/privacy.html 'Privacy policy'
+          check https://www.rootserve.us/sitemap.xml 'urlset'
+          check https://www.rootserve.us/assets/js/agents.js 'CASES'
+          check "https://forms.zohopublic.com/inforoot1/form/AIAssessmentRequest/formperma/-l-w70ebrpPCryWKDNfDS8wR5BVh7L_U2-c3z9M09QA" 'AI Assessment'
+          size=$(curl -sI --max-time 20 https://www.rootserve.us/assets/media/water-ring.mp4 | tr -d '\r' | awk 'tolower($1)=="content-length:"{print $2}')
+          if [ "${size:-0}" -lt 500000 ]; then echo "::error::water-ring.mp4 missing or too small (${size:-none})"; fail=1; else echo "OK  water-ring.mp4 ($size bytes)"; fi
+          exit $fail
