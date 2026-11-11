@@ -125,7 +125,9 @@ const ZOHO_FORM_URL = 'https://forms.zohopublic.com/inforoot1/form/AIAssessmentR
   };
   const idle = cb => ('requestIdleCallback' in window) ? requestIdleCallback(cb, { timeout: 1500 }) : setTimeout(cb, 200);
   const whenLoaded = cb => document.readyState === 'complete' ? idle(cb) : window.addEventListener('load', () => idle(cb), { once: true });
-  document.querySelectorAll('.hero-visual video').forEach(v => { v.muted = true; v.addEventListener('canplay', () => { if (v.paused) tryPlay(v); }, { once: true }); if (v.readyState >= 3 && v.paused) tryPlay(v); });
+  // Reduce Motion: the ring stays still on its first frame
+  if (reduce) document.querySelectorAll('.hero-visual video').forEach(v => { v.removeAttribute('autoplay'); v.autoplay = false; v.pause(); v.addEventListener('play', () => v.pause()); });
+  else document.querySelectorAll('.hero-visual video').forEach(v => { v.muted = true; v.addEventListener('canplay', () => { if (v.paused) tryPlay(v); }, { once: true }); if (v.readyState >= 3 && v.paused) tryPlay(v); });
   vids.filter(v => v.dataset.lazy === 'load').forEach(v => whenLoaded(() => start(v)));
   const later = vids.filter(v => v.dataset.lazy === 'view');
   if ('IntersectionObserver' in window) {

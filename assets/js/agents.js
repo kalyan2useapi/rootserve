@@ -93,7 +93,7 @@ const RM=matchMedia('(prefers-reduced-motion: reduce)').matches;
 const AANG=[-90,-18,54,126,198], TANG=[-54,90,-126];
 let ents=[],idx={},spokes=[],pairs=[],cur=0,t0=null,fired=new Set(),live=[],ended=false,running=false,endAt=0;
 
-CASES.forEach((c,i)=>{const b=document.createElement('button');b.type='button';b.setAttribute('role','tab');b.innerHTML=c.tab+'<span class="p"></span>';b.onclick=()=>{load(i);t0=null;if(RM){place(0);ending()}};tabs.appendChild(b)});
+CASES.forEach((c,i)=>{const b=document.createElement('button');b.type='button';b.setAttribute('role','tab');b.innerHTML=c.tab+'<span class="p"></span>';b.onclick=()=>{load(i);t0=null};tabs.appendChild(b)});
 
 function side(a){const c=Math.cos(a*Math.PI/180),s=Math.sin(a*Math.PI/180);return Math.abs(c)>.45?(c>0?'r':'l'):(s<0?'t':'b')}
 function load(i){cur=i;const c=CASES[i];
@@ -122,9 +122,9 @@ function addMsg(m){const ty=kind(m);[...log.children].forEach(c=>c.classList.add
 function ending(){root.dispatchEvent(new CustomEvent('agentend'));el.querySelector('.core').classList.add('done');const e=CASES[cur].end;log.innerHTML=`<div class="end msg"><div class="n">${e[0]}</div><div class="s">${e[1]}</div><div class="ag-stats">${e[2].map(x=>'<b>'+x+'</b>').join('')}</div></div>`}
 
 load(0);
-if(RM){place(0);ending();return}
+/* Reduce Motion: the stories still play, but agents hold still, messages fade in place instead of flying, and nothing sprays */
 
-function frame(now){if(!running)return;if(t0===null)t0=now;const t=now-t0;place(now);const c=CASES[cur];
+function frame(now){if(!running)return;if(t0===null)t0=now;const t=now-t0;place(RM?0:now);const c=CASES[cur];
  c.T.forEach((m,j)=>{if(t>=m[0]&&!fired.has(j)){fired.add(j);const ty=kind(m),col=COL[ty];
   const g=document.createElementNS(NS,'g');const path=document.createElementNS(NS,'path');path.setAttribute('class','trail');path.setAttribute('stroke',col);path.setAttribute('stroke-width',ty==='t'?'1':'1.3');
   if(ty==='t')path.setAttribute('stroke-dasharray','2 3');
@@ -133,7 +133,7 @@ function frame(now){if(!running)return;if(t0===null)t0=now;const t=now-t0;place(
   live.push({m,start:m[0],g,path,dot,ty,bend:ty==='t'?.12:.35})}});
  live=live.filter(o=>{const k=Math.min(1,(t-o.start)/TRAVEL),ke=ease(k),a=pos[idx[o.m[1]]],b=pos[idx[o.m[2]]];
   const p=qp(a,b,ke,o.bend);o.dot.setAttribute('cx',p[0]);o.dot.setAttribute('cy',p[1]);
-  const k0=Math.max(0,ke-.3);let d='';for(let s=0;s<=8;s++){const q=qp(a,b,k0+(ke-k0)*s/8,o.bend);d+=(s?'L':'M')+q[0].toFixed(1)+','+q[1].toFixed(1)}o.path.setAttribute('d',d);
+  const k0=RM?0:Math.max(0,ke-.3),k1=RM?1:ke;let d='';for(let s=0;s<=8;s++){const q=qp(a,b,k0+(k1-k0)*s/8,o.bend);d+=(s?'L':'M')+q[0].toFixed(1)+','+q[1].toFixed(1)}o.path.setAttribute('d',d);if(RM&&!o.arrived){o.dot.setAttribute('r','0');o.path.style.opacity=k}
   const to=ents[idx[o.m[2]]].el,from=ents[idx[o.m[1]]].el;
   if(k>=1&&!o.arrived){o.arrived=true;o.arr=t;from.classList.remove('act');to.classList.add('act');if(o.ty==='w')to.classList.add('warn');addMsg(o.m);o.dot.setAttribute('r','0');const q=pos[idx[o.m[2]]];root.dispatchEvent(new CustomEvent('agentmsg',{detail:{x:q[0],y:q[1],type:o.ty}}))}
   if(o.arrived){const f=Math.max(0,1-(t-o.arr)/550);o.path.style.opacity=f;if(f===0){to.classList.remove('act','warn');o.g.remove();return false}}
