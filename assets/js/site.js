@@ -95,3 +95,25 @@ const ZOHO_FORM_URL = 'https://forms.zohopublic.com/inforoot1/form/AIAssessmentR
   // year
   document.querySelectorAll('[data-year]').forEach(el => { el.textContent = new Date().getFullYear(); });
 })();
+
+/* Water ring video: start downloading only after the page has loaded (hero) or when it nears the screen (closing section).
+   The poster image shows until then. AV1 first, VP9 and MP4 as fallbacks. */
+(function () {
+  const vids = [...document.querySelectorAll('video[data-lazy]')];
+  if (!vids.length) return;
+  const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const start = v => {
+    if (v.dataset.started) return; v.dataset.started = '1';
+    v.querySelectorAll('source[data-src]').forEach(s => { s.src = s.dataset.src; });
+    v.load();
+    if (!reduce) { const p = v.play(); if (p && p.catch) p.catch(() => {}); }
+  };
+  const idle = cb => ('requestIdleCallback' in window) ? requestIdleCallback(cb, { timeout: 1500 }) : setTimeout(cb, 200);
+  const whenLoaded = cb => document.readyState === 'complete' ? idle(cb) : window.addEventListener('load', () => idle(cb), { once: true });
+  vids.filter(v => v.dataset.lazy === 'load').forEach(v => whenLoaded(() => start(v)));
+  const later = vids.filter(v => v.dataset.lazy === 'view');
+  if ('IntersectionObserver' in window) {
+    const io = new IntersectionObserver(es => es.forEach(e => { if (e.isIntersecting) { start(e.target); io.unobserve(e.target); } }), { rootMargin: '400px 0px' });
+    whenLoaded(() => later.forEach(v => io.observe(v)));
+  } else whenLoaded(() => later.forEach(start));
+})();
