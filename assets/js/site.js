@@ -158,3 +158,39 @@ const ZOHO_FORM_URL = 'https://forms.zohopublic.com/inforoot1/form/AIAssessmentR
       'light hits: ' + (window.RootserveHits ? window.RootserveHits.mode + ', ' + window.RootserveHits.hits + ' so far, peak light ' + (window.RootserveHits.lit || 0) + '/255' : 'not running')].join('\n');
   }, 500);
 })();
+
+/* Google Analytics 4, loaded after the page has finished loading so it never slows the first view.
+   Also records clicks that signal intent: assessment buttons, phone, email and WhatsApp. */
+(function () {
+  const GA_ID = 'G-WKVEFR0JMY';
+  if (location.hostname !== 'www.rootserve.us' && location.hostname !== 'rootserve.us') return; // skip local previews
+  window.dataLayer = window.dataLayer || [];
+  window.gtag = function () { dataLayer.push(arguments); };
+  gtag('js', new Date());
+  gtag('config', GA_ID);
+  const load = () => {
+    const s = document.createElement('script');
+    s.async = true; s.src = 'https://www.googletagmanager.com/gtag/js?id=' + GA_ID;
+    document.head.appendChild(s);
+  };
+  const idle = cb => ('requestIdleCallback' in window) ? requestIdleCallback(cb, { timeout: 3000 }) : setTimeout(cb, 1200);
+  if (document.readyState === 'complete') idle(load); else window.addEventListener('load', () => idle(load), { once: true });
+
+  document.addEventListener('click', e => {
+    const a = e.target.closest && e.target.closest('a');
+    if (!a) return;
+    const href = a.getAttribute('href') || '';
+    let name = null;
+    if (/contact\.html/.test(href)) name = 'assessment_click';
+    else if (href.startsWith('tel:')) name = 'phone_click';
+    else if (href.startsWith('mailto:')) name = 'email_click';
+    else if (/wa\.me|whatsapp/i.test(href)) name = 'whatsapp_click';
+    if (name) gtag('event', name, { link_text: (a.textContent || '').trim().slice(0, 60), page_path: location.pathname });
+  }, { passive: true });
+
+  // Hero story tabs: which industry visitors look at
+  document.addEventListener('click', e => {
+    const b = e.target.closest && e.target.closest('.agents .tabs button');
+    if (b) gtag('event', 'story_select', { story: (b.textContent || '').trim() });
+  }, { passive: true });
+})();
