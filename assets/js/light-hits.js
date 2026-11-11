@@ -24,6 +24,23 @@
     var pc = document.createElement('canvas'), px = pc.getContext('2d');
     var lc = document.createElement('canvas'), lx = lc.getContext('2d');
     var video = box.querySelector('video');
+    // Where the water is: the live video frame when the browser lets us read it, otherwise the
+    // still poster of the ring (some iPhones return empty frames from drawImage(video)).
+    var poster = new Image(), posterOK = false;
+    if (video && video.poster) { poster.onload = function () { posterOK = true; }; poster.src = video.poster; }
+    var probe = document.createElement('canvas'); probe.width = probe.height = 16;
+    var pr = probe.getContext('2d', { willReadFrequently: true }), videoOK = false, lastProbe = 0;
+    function checkVideo(now) {
+      if (videoOK || !video || video.readyState < 2 || !video.videoWidth || now - lastProbe < 1000) return;
+      lastProbe = now;
+      try {
+        pr.clearRect(0, 0, 16, 16); pr.drawImage(video, 0, 0, 16, 16);
+        var d = pr.getImageData(0, 0, 16, 16).data, sum = 0;
+        for (var i = 0; i < d.length; i += 4) sum += d[i] + d[i + 1] + d[i + 2] + d[i + 3];
+        videoOK = sum > 16 * 16 * 4 * 20;   // the ring frame is far from empty; transparent/black means unreadable
+      } catch (e) { videoOK = false; }
+    }
+    var api = { mode: 'starting', hits: 0 };
     var fx = [], raf = 0, last = 0, W = 0, H = 0, k = 1;
 
     function size() {
@@ -37,11 +54,12 @@
     function hit(x, y, s, color) {
       s = s == null ? 1 : s;
       var c = rgb(color || COL['']), a = Math.atan2(y - CY, x - CX), p = ringPoint(a, RING);
-      fx.push({ kind: 'flash', a: a, x: p[0], y: p[1], c: c, s: RM ? s * 0.7 : s, t: 0, life: RM ? 1.4 : 1.1 });
+      api.hits++;
+      fx.push({ kind: 'flash', a: a, x: p[0], y: p[1], c: c, s: s, t: 0, life: RM ? 1.4 : 1.1 });
       if (RM) { start(); return; }   // Reduce Motion: a gentle glow only, nothing moves
       fx.push({ kind: 'run', a: a, c: c, s: s, t: 0, life: 1.4, speed: 1.6 });
       fx.push({ kind: 'wave', x: p[0], y: p[1], c: c, s: s, t: 0, life: 0.9 });
-      var n = Math.round(14 + 18 * s);
+      var n = Math.round(22 + 26 * s);
       for (var i = 0; i < n; i++) {
         var out = Math.random() < 0.7 ? 1 : -1;               // most spray flies outward
         var ang = a + (Math.random() - 0.5) * 0.5;
@@ -49,7 +67,7 @@
         var tan = (Math.random() - 0.5) * 40;
         fx.push({ kind: 'drop', x: p[0] + (Math.random() - 0.5) * 8, y: p[1] + (Math.random() - 0.5) * 8,
           vx: Math.cos(ang) * sp - Math.sin(ang) * tan, vy: Math.sin(ang) * sp + Math.cos(ang) * tan,
-          r: 0.5 + Math.random() * 1.3, c: Math.random() < 0.6 ? [235, 245, 255] : c, t: 0, life: 0.6 + Math.random() * 0.6 });
+          r: 0.7 + Math.random() * 1.5, c: Math.random() < 0.6 ? [235, 245, 255] : c, t: 0, life: 0.6 + Math.random() * 0.6 });
       }
       start();
     }
@@ -62,7 +80,10 @@
 
     function draw(dt) {
       size();
-      var masked = !!(video && video.readyState >= 2 && video.videoWidth);
+      checkVideo(performance.now());
+      var src = videoOK ? video : (posterOK ? poster : null);
+      var masked = !!src;
+      api.mode = videoOK ? 'video' : posterOK ? 'poster' : 'plain';
       // light shapes go to the mask canvas when we can light the real water, otherwise straight to the screen
       var L = masked ? mx : ctx;
       ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.globalCompositeOperation = 'source-over'; ctx.clearRect(0, 0, W, H);
@@ -107,11 +128,11 @@
         // pc = light x video, kept only where there is light
         px.setTransform(1, 0, 0, 1, 0, 0);
         px.globalCompositeOperation = 'copy'; px.drawImage(mc, 0, 0);
-        px.globalCompositeOperation = 'multiply'; px.drawImage(video, 0, 0, W, H);
+        px.globalCompositeOperation = 'multiply'; px.drawImage(src, 0, 0, W, H);
         px.globalCompositeOperation = 'destination-in'; px.drawImage(mc, 0, 0);
         // lc = video brightened by that light, also cut to the light, so everything else stays transparent
         lx.setTransform(1, 0, 0, 1, 0, 0);
-        lx.globalCompositeOperation = 'copy'; lx.drawImage(video, 0, 0, W, H);
+        lx.globalCompositeOperation = 'copy'; lx.drawImage(src, 0, 0, W, H);
         lx.globalCompositeOperation = 'lighter'; lx.drawImage(pc, 0, 0); lx.drawImage(pc, 0, 0); lx.drawImage(pc, 0, 0);
         lx.globalCompositeOperation = 'destination-in'; lx.drawImage(mc, 0, 0); lx.drawImage(mc, 0, 0);
         ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.globalCompositeOperation = 'source-over'; ctx.drawImage(lc, 0, 0);
@@ -121,7 +142,7 @@
         var q = free[j][0], ev = free[j][1], uu = q.t / q.life;
         if (q.kind === 'flash') {
           var b2 = ctx.createRadialGradient(q.x, q.y, 0, q.x, q.y, 40);
-          b2.addColorStop(0, rgba(q.c, 0.2 * ev * q.s)); b2.addColorStop(1, rgba(q.c, 0));
+          b2.addColorStop(0, rgba(q.c, 0.32 * ev * q.s)); b2.addColorStop(1, rgba(q.c, 0));
           ctx.fillStyle = b2; ctx.beginPath(); ctx.arc(q.x, q.y, 40, 0, 6.283); ctx.fill();
         } else if (q.kind === 'wave') {
           ctx.strokeStyle = rgba(q.c, 0.22 * ev * q.s); ctx.lineWidth = 1;
@@ -142,7 +163,8 @@
     }
     function start() { if (!raf) raf = requestAnimationFrame(loop); }
     document.addEventListener('visibilitychange', function () { if (document.hidden) fx.length = 0; });
-    return { hit: hit, pulse: pulse };
+    api.hit = hit; api.pulse = pulse;
+    return api;
   }
 
   function boot() {
